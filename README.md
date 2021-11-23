@@ -22,8 +22,8 @@ Clone the git repo, then install the requirements with pip
 
 ```
 
-git clone https://github.com/plotly/dash-sample-apps
-cd dash-sample-apps/apps/dash-oil-and-gas
+git clone https://github.com/Pi-Tone/pi-tone_hrex
+cd pi-tone_hrex
 pip install -r requirements.txt
 
 ```
