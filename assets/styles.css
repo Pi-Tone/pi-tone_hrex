@@ -1,5 +1,5 @@
 .js-plotly-plot .plotly .modebar {
-  padding-top: 5%;
+  padding-top: 20%;
   margin-right: 3.5%;
 }
 
@@ -15,6 +15,7 @@ body {
 .column,
 .columns {
   margin-left: 0.5%;
+  margin-top: -3%
 }
 
 .pretty_container {
@@ -86,7 +87,7 @@ body {
   text-transform: none;
   font-size: 15px;
   float: right;
-  margin-right: 10px;
+  margin-right: 5%;
   margin-top: 30px;
 }
 #title {
