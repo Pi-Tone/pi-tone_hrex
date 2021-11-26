@@ -1,7 +1,8 @@
 # Import required libraries
 import pickle
+import os
 import copy
-import pathlib
+from pathlib import Path
 import urllib.request
 import dash
 import math
@@ -10,14 +11,16 @@ import pandas as pd
 from dash.dependencies import Input, Output, State, ClientsideFunction
 import dash_core_components as dcc
 import dash_html_components as html
+import plotly.express as px
+import dash_table
 
 # Multi-dropdown options
 from controls import COUNTIES, WELL_STATUSES, WELL_TYPES, WELL_COLORS
 
 
 # get relative data folder
-PATH = pathlib.Path(__file__).parent
-DATA_PATH = PATH.joinpath("data").resolve()
+PATH = Path.cwd()
+DATA_PATH = os.path.join(PATH, 'data\\')
 
 
 
@@ -44,28 +47,37 @@ well_type_options = [
 
 
 # Download pickle file
-urllib.request.urlretrieve(
-    "https://raw.githubusercontent.com/plotly/datasets/master/dash-sample-apps/dash-oil-and-gas/data/points.pkl",
-    DATA_PATH.joinpath("points.pkl"),
-)
-points = pickle.load(open(DATA_PATH.joinpath("points.pkl"), "rb"))
+# urllib.request.urlretrieve(
+#     "https://raw.githubusercontent.com/plotly/datasets/master/dash-sample-apps/dash-oil-and-gas/data/points.pkl",
+#     DATA_PATH.joinpath("points.pkl"),
+# )
+# points = pickle.load(open(DATA_PATH.joinpath("points.pkl"), "rb"))
 
 
 # Load data
-df = pd.read_csv(
-    "https://github.com/plotly/datasets/raw/master/dash-sample-apps/dash-oil-and-gas/data/wellspublic.csv",
-    low_memory=False,
-)
-df["Date_Well_Completed"] = pd.to_datetime(df["Date_Well_Completed"])
-df = df[df["Date_Well_Completed"] > dt.datetime(1960, 1, 1)]
-
-trim = df[["API_WellNo", "Well_Type", "Well_Name"]]
-trim.index = trim["API_WellNo"]
-dataset = trim.to_dict(orient="index")
-
-
+# df = pd.read_csv(
+#     "https://github.com/plotly/datasets/raw/master/dash-sample-apps/dash-oil-and-gas/data/wellspublic.csv",
+#     low_memory=False,
+# )
+# df["Date_Well_Completed"] = pd.to_datetime(df["Date_Well_Completed"])
+# df = df[df["Date_Well_Completed"] > dt.datetime(1960, 1, 1)]
+#
+# trim = df[["API_WellNo", "Well_Type", "Well_Name"]]
+# trim.index = trim["API_WellNo"]
+# dataset = trim.to_dict(orient="index")
+#
+#
 # Create global chart template
 mapbox_access_token = "pk.eyJ1Ijoia2ZvcnJpcyIsImEiOiJja2J5a2hpMXUxMHBmMnFwYzBwNDU3andjIn0.o6CXRtTETx5soEEuCQZQ1w"
+
+# Fake data for Gantt table
+df = pd.DataFrame({
+    "Fruit": ["Apples", "Oranges", "Bananas", "Apples", "Oranges", "Bananas"],
+    "Amount": [4, 1, 2, 2, 4, 5],
+    "City": ["SF", "SF", "SF", "Montreal", "Montreal", "Montreal"]
+})
+fig = px.bar(df, x="Fruit", y="Amount", color="City", barmode="group")
+
 
 layout = dict(
     autosize=True,
@@ -83,6 +95,22 @@ layout = dict(
         zoom=7,
     ),
 )
+excel_table = pd.read_csv(DATA_PATH + 'orderhrex.csv')
+
+def gen_data_for_excel(df, max_rows=10):
+    cols = [['Shipper Name', 'Order No.'], ['Shipping Status', 'Order Date'], ['Is Paid', 'Paid Amount']]
+    for col in cols:
+        df[col[0]] = df[col].apply(lambda row: '\n'.join(row.values.astype(str)), axis=1)
+    df = df[['Shipper Name', 'Shipping Status', 'Is Paid', 'Sale Amount']]
+    return dash_table.DataTable(
+        id="table",
+        columns=[{"name": i, "id": i} for i in df.columns],
+        data=df.to_dict("records"),
+        style_cell={"whiteSpace": "pre-line", 'minWidth': 95, 'maxWidth': 95, 'width': 95},
+        fixed_rows={'headers': True},
+        page_action='none',
+        style_table={'height': '500px', 'overflowY': 'auto'}
+    )
 
 
 # Create app layout
@@ -139,7 +167,7 @@ app.layout = html.Div(
             className="row flex-display",
             style={"margin-bottom": "25px"},
         ),
-        html.Div(              # 地图section
+        html.Div(
             [
                 html.Div(
                     [dcc.Graph(id="main_graph", config= {'displaylogo': False},)],
@@ -152,16 +180,24 @@ app.layout = html.Div(
             ],
             className="row flex-display",
         ),
-        html.Div(
+        html.Div(children=
             [
-                html.Div(
-                    [dcc.Graph(id="ganttchart_graph", config= {'displaylogo': False})],
-                    className="pretty_container three columns",
-                ),
-                html.Div(
-                    [dcc.Graph(id="csv_graph", config= {'displaylogo': False})],
-                    className="pretty_container six columns",
-                ),
+                html.Div(children=[
+                    html.H1(children='Test Gantt'),
+
+                    html.Div(children='''
+                                        This is a test Gantt graph
+                                    '''),
+
+                    dcc.Graph(
+                        id='example-gantt',
+                        figure=fig
+                    )
+                ]),
+                html.Div([
+                    html.H4(children='US Agriculture Exports (2011)'),
+                    gen_data_for_excel(excel_table)
+                ]),
                 html.Div(
                     [dcc.Graph(id="risktrend_graph", config={'displaylogo': False})],
                     className="pretty_container three columns",
