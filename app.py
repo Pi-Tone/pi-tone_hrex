@@ -14,6 +14,8 @@ import plotly.express as px
 from dash import dash_table
 import dash_bootstrap_components as dbc
 from datetime import datetime
+import dash_deck
+import pydeck as pdk
 
 # get relative data folder
 PATH = Path.cwd()
@@ -21,7 +23,7 @@ DATA_PATH = os.path.join(PATH, 'data\\')
 
 app = dash.Dash(
     __name__, meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
-    external_stylesheets=[dbc.themes.QUARTZ],
+    external_stylesheets=[dbc.themes.SUPERHERO],
     routes_pathname_prefix='/dash-hrex-pct/'
 )
 app.title = "加拿大锦程-企业坞"
@@ -50,7 +52,7 @@ layout = dict(
     mapbox=dict(
         accesstoken=mapbox_access_token,
         style="light",
-        center=dict(lon=-79.347, lat=43.818),
+        center=dict(lon=-171.028072, lat=38.653508),
         zoom=7,
     ),
 )
@@ -82,15 +84,16 @@ def drawHeader():
                     dbc.Col(html.Img(src=app.get_asset_url("hrexicon.png"),
                                      id="dashboard-logo",
                                      style={
-                                         "height": '8rem',
-                                         "width": '15rem',
+                                         "height": '7vh',
+                                         "width": 'auto',
+                                         "margin-bot": '50px',
                                      }, width='45%')),
 
                     dbc.Col(html.H6('Last Updated:' + str(excel_table['Order Date'].iloc[-1])),
                             style={
                                 'text-align': 'right',
                                 "width": 'auto',
-                                'color': 'white'}, width='40%'),
+                                'color': 'Navy'}, width='40%'),
                 ],style={
                     'height': 'auto',
                     'text-align': 'auto',
@@ -100,21 +103,58 @@ def drawHeader():
                 dbc.Row(html.H2(children='加拿大锦程快递',
                                 style={
                                     'text-align': 'center',
-                                    'color': 'white',
+                                    'color': 'Navy',
                                     'margin-bot': '30px',
                                 }), ),
                 dbc.Row(
                     (html.H5(children='业务总览-Ontology',
                              style={
                                  'text-align': 'center',
-                                 'color': 'white',
+                                 'color': 'Black',
                                  'margin-bot': '30px',
                              }),)),
                 dbc.Row(
                     dbc.Button('了解更多',href='https://www.hr-ex.com', color='success',class_name='me-md-5 col-auto mx-auto'),
-                ),]),style={'margin-bot':'10%'})
+                ),]),style={'margin-bot':'30%'})
 
 #Create Maingraph
+mapbox_key = "pk.eyJ1Ijoia2ZvcnJpcyIsImEiOiJja2J5a2hpMXUxMHBmMnFwYzBwNDU3andjIn0.o6CXRtTETx5soEEuCQZQ1w"
+
+
+DATA_URL = "https://raw.githubusercontent.com/Pi-Tone/pi-tone_hrex/master/data/df_geo111111.csv"
+# A bounding box for downtown San Francisco, to help filter this commuter data
+
+df_1 = pd.read_csv(DATA_URL)
+
+GREEN_RGB = [0, 255, 0, 40]
+RED_RGB = [240, 100, 0, 40]
+
+# Specify a deck.gl ArcLayer
+arc_layer = pdk.Layer(
+    "ArcLayer",
+    data=df_1,
+    get_width="S000 * 2",
+    get_source_position=["lng_s", "lat_s"],
+    get_target_position=["lng_d", "lat_d"],
+    get_tilt=15,
+    get_source_color=RED_RGB,
+    get_target_color=GREEN_RGB,
+    pickable=True,
+    auto_highlight=True,
+)
+
+view_state = pdk.ViewState(
+    latitude=38.653508, longitude=-171.028072, bearing=0, pitch=0, zoom=3,
+)
+
+
+TOOLTIP_TEXT = {
+    "html": "{S000} shipments <br /> View details under table"
+}
+r = pdk.Deck(arc_layer, initial_view_state=view_state, tooltip=TOOLTIP_TEXT, map_provider='mapbox')
+
+
+
 def mainGraph():
     return ()
 
@@ -142,6 +182,10 @@ def drawFigure():
         ),
     ])
 
+#create Ganttchart
+def ganttchart_graph():
+    ()
+
 
 # Create app layout
 app.layout = html.Div(
@@ -150,16 +194,20 @@ app.layout = html.Div(
         html.Div(id="output-clientside"),
         dbc.Row([
                     dbc.Col([
-                        drawHeader()
-                    ], width='100%'),
-                ], align='center'),
+                        drawHeader(),
+                    ], style={"margin-bot":"50px"},width='100%'),
+                ], align='center', style={"margin-bot":"500px"}),
         dbc.Card(
             dbc.CardBody([
                 html.Br(),
                 dbc.Row([
                     dbc.Col([
-                        drawFigure()
-                    ], width=10,
+                        html.Div(dash_deck.DeckGL(r.to_json(),
+                                                  id="deck-gl",
+                                                  tooltip=TOOLTIP_TEXT,
+                                                  mapboxKey=r.mapbox_key,
+                                                  style={"width":"73vw","height":"35vh","display":"inline"},
+                                                  ))], width=10,
                         style={"height":"100%"}),
                     dbc.Col([
                         drawFigure()
@@ -168,119 +216,16 @@ app.layout = html.Div(
                 html.Br(),
                 dbc.Row([
                     dbc.Col([
-                        dcc.Graph(
-                            figure=ganttchart_example
-                        )
+                        dcc.Graph(figure=ganttchart_example),
                     ], width=3),
                     dbc.Col([
-                        drawFigure()
-                    ], width=7),
+                        html.Div(gen_data_for_excel(excel_table)),], width=7),
                     dbc.Col([
                         drawFigure()
                     ], width=2),
                 ], align='center'),
-            ]), color='dark'
-        )
+            ]), color='white',),
         ],))
-
-# html.Div(
-        #     [
-        #         html.Div(
-        #             dbc.Row(
-        #             [
-        #                 dbc.Col(html.Div(
-        #                 [
-        #                     html.Img(
-        #                         src=app.get_asset_url("hrexicon.png"),
-        #                         id="dashboard-logo",
-        #                         style={
-        #                             "height": "60px",
-        #                             "width": "auto",
-        #                             "margin-bottom": "25px",
-        #                         },
-        #                     )
-        #                 ],
-        #                 className="one-third column",
-        #             ), width='auto'),
-        #                 dbc.Col(html.Div(
-        #                 [
-        #                     html.Div(
-        #                         [
-        #                             html.H3(
-        #                                 '加拿大锦程快递', #font style需要修改
-        #                                 style={"margin-bottom": '0px', 'color':'#ffffff'},
-        #                             ),
-        #                             html.H5(
-        #                                "业务总览-Ontology", style={'margin-bottom': '0px', 'color': '#ffffff'},
-        #                             ),
-        #                         ]
-        #                     )
-        #                 ],
-        #                 className="one-half column",
-        #                 id="title",
-        #             ),width="5",),
-        #                 dbc.Col(html.Div([
-        #                             html.H6('Last Updated:' + str(excel_table['Order Date'].iloc[-1]),
-        #                             style={'color': 'orange'})
-        #                             ],
-        #                             className='one-third column', id='title1'
-        #                             ),width='auto'),
-        #                 dbc.Col(html.Div(
-        #                 [
-        #                     html.A(
-        #                         dbc.Button("了解更多", className="me-md-2"),
-        #                                    # id="learn-more-button", style={"color":"#ffffff"}),
-        #                         href="https://www.hr-ex.com",
-        #                     )
-        #                 ],
-        #                 className="one-third column",
-        #                 id="button",
-        #             ),width='auto'),],))
-        #     ],)
-
-
-
-            # id="header",
-            # className="row flex-display",
-            # style={"margin-bottom": "25px"},),
-        # html.Div(
-        #     [
-        #         html.Div(
-        #             [dcc.Graph(id="main_graph", config= {'displaylogo': False},)],
-        #             className="pretty_container nine columns",
-        #         ),
-        #         html.Div(
-        #             [dcc.Graph(
-        #                 id="statusoverview_graph",
-        #                 config= {'displaylogo': False})],
-        #             className="pretty_container three columns",
-        #         ),
-        #     ],
-        #     className="row flex-display",
-        # ),
-        # html.Div(
-        #     [
-        #         # html.Div(
-        #         #     [dcc.Graph(
-        #         #         id='gantt-chart',
-        #         #         figure=ganttchart_example,
-        #         #         className="pretty_container four columns",
-        #         #     )]
-        #         # ),
-        #         html.Div([
-        #             gen_data_for_excel(excel_table),
-        #         ]),
-        #         html.Div(
-        #             [dcc.Graph(id="risktrend_graph", config={'displaylogo': False})],
-        #             className="pretty_container seven columns",
-        #         )
-        #     ],
-        #     className="row flex-display",
-        # ),
-
-
-def ganttchart_graph():
-    ()
 
 
 
